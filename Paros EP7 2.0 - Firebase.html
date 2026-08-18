@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Paro Docente</title>
+    
+    <!-- SDKs de Firebase (compatibilidad web) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --background: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { background-color: var(--background); color: var(--text); padding: 15px; }
+        
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header h1 { font-size: 22px; margin-bottom: 5px; }
+        header p { font-size: 14px; opacity: 0.9; }
+        
+        .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .card h2 { font-size: 16px; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+        
+        .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+        .form-group label { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #4b5563; }
+        .form-group input, .form-group select { padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; }
+        
+        .btn { background: var(--primary-light); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+        .btn:hover { background: var(--primary); }
+        .btn-sec { background: #10b981; margin-top: 5px; }
+        .btn-sec:hover { background: #059669; }
+        .btn-warning { background: #f59e0b; color: #fff; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger { background: #6b7280; color: #fff; }
+        .btn-danger:hover { background: #4b5563; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .stat-box { background: #eff6ff; border-left: 4px solid var(--primary-light); padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-box .num { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .stat-box .cant { font-size: 11px; color: #3b82f6; font-weight: bold; margin-top: 2px; }
+        .stat-box .label { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        
+        .turno-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; border: 1px solid var(--primary-light); background: transparent; color: var(--primary-light); border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: var(--primary-light); color: white; }
+        
+        .grupo-cargo-header { background: #e5e7eb; color: #374151; font-weight: bold; font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .docente-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f3f4f6; gap: 10px; }
+        .docente-row:last-child { border-bottom: none; }
+        .docente-info { flex: 1; min-width: 0; }
+        .docente-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .docente-sc { font-size: 11px; color: #6b7280; }
+        .checks-container { display: flex; gap: 15px; align-items: center; }
+        .check-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #4b5563; font-weight: bold; }
+        .check-item input { width: 18px; height: 18px; margin-bottom: 2px; cursor: pointer; }
+        .select-item { display: flex; flex-direction: column; font-size: 10px; color: #4b5563; font-weight: bold; }
+        .select-item select { padding: 4px 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 12px; margin-top: 2px; outline: none; background: #fff; }
+        
+        .acciones-rapidas { display: flex; gap: 10px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Gestor de Paro Docente</h1>
+        <p>Control Nominal e Institucional Día por Día (Sincronizado)</p>
+    </header>
+
+    <div class="card">
+        <h2>Fecha de Control</h2>
+        <div class="form-group">
+            <input type="date" id="fechaParo">
+        </div>
+        <button class="btn" onclick="inicializarDia()">Cargar / Ver Día</button>
+    </div>
+
+    <div class="card" id="cardResultados" style="display:none;">
+        <h2>Porcentaje de Adhesión Real</h2>
+        <div style="margin-top: 10px;">
+            <p style="font-size: 13px; font-weight: bold; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px;">DOCENTES</p>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="num" id="pctManana">0%</div>
+                    <div class="cant" id="cantManana">(0 de 0)</div>
+                    <div class="label">Turno Mañana</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num" id="pctTarde">0%</div>
+                    <div class="cant" id="cantTarde">(0 de 0)</div>
+                    <div class="label">Turno Tarde</div>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 15px;">
+            <p style="font-size: 13px; font-weight: bold; color: #10b981; border-bottom: 1px solid #ddd; padding-bottom: 3px;">AUXILIARES</p>
+            <div class="stats-grid">
+                <div class="stat-box" style="background: #ecfdf5; border-left-color: #10b981;">
+                    <div class="num" id="pctAuxManana" style="color: #047857;">0%</div>
+                    <div class="cant" id="cantAuxManana" style="color: #047857;">(0 de 0)</div>
+                    <div class="label">Turno Mañana</div>
+                </div>
+                <div class="stat-box" style="background: #ecfdf5; border-left-color: #10b981;">
+                    <div class="num" id="pctAuxTarde" style="color: #047857;">0%</div>
+                    <div class="cant" id="cantAuxTarde" style="color: #047857;">(0 de 0)</div>
+                    <div class="label">Turno Tarde</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="cardPlanilla" style="display:none;">
+        <div class="turno-selector">
+            <button id="btnM" class="tab-btn active" onclick="cambiarTurno('Mañana')">Turno Mañana</button>
+            <button id="btnT" class="tab-btn" onclick="cambiarTurno('Tarde')">Turno Tarde</button>
+        </div>
+
+        <div class="acciones-rapidas">
+            <button class="btn btn-warning" style="flex: 1;" onclick="marcarAsistenciaObligatoria()">⚡ Forzar Todo el Turno</button>
+            <button class="btn btn-danger" style="flex: 1;" onclick="desmarcarAsistenciaTurno()">❌ Desmarcar Todo</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button class="btn btn-sec" style="flex: 1; margin-top:0;" onclick="guardarAsistenciaDia()">Guardar Registro</button>
+            <button class="btn" style="flex: 1; background: #047857;" onclick="exportarExcelDia()">Exportar a Excel</button>
+        </div>
+        
+        <div id="listaDocentes"></div>
+        
+        <button class="btn btn-sec" style="margin-top:15px;" onclick="guardarAsistenciaDia()">Guardar Registro del Día</button>
+    </div>
+</div>
+
+<script>
+    // -------------------------------------------------------------
+    // CONFIGURACIÓN DE FIREBASE
+    // Reemplazá estos valores con los datos de tu consola de Firebase
+    // -------------------------------------------------------------
+   const firebaseConfig = {
+    apiKey: "AIzaSy...",
+    authDomain: "tu-proyecto.firebaseapp.com",
+    projectId: "tu-proyecto",
+    storageBucket: "tu-proyecto.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef..."
+};
+
+    // Inicializar Firebase y Firestore
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const baseDocentes = [
+        { id: 1, nombre: "Romero, Marianela", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 2, nombre: "Gunilla, Paola", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 3, nombre: "Chavez, Antonela", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 4, nombre: "Santillán, Gabriela", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 5, nombre: "Aragonés, Yesica", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 6, nombre: "Tagliaferro, Carla", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 7, nombre: "Ciechky, Sandra", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 8, nombre: "Messina, Romina", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 9, nombre: "Latorre, Marisa", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 10, nombre: "Argonz, Laura", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 11, nombre: "Scotti, Florencia", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [0] },
+        { id: 12, nombre: "Campagna, Sol (Suplente)", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 13, nombre: "Chacón, Corina", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 14, nombre: "Vives, Vanesa", escuela: "EP 7", turno: "Mañana", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 15, nombre: "Calle, Julieta", escuela: "EP 7", turno: "Mañana", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 16, nombre: "Fernandez, Antonella", escuela: "EP 7", turno: "Mañana", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 17, nombre: "Pintón, Natalia", escuela: "EP 7", turno: "Mañana", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 18, nombre: "Lingeri, Gisele", escuela: "EP 7", turno: "Mañana", cargo: "ZP", dias: [2,4] },
+        { id: 19, nombre: "Forti, Paola", escuela: "EP 7", turno: "Mañana", cargo: "ZP", dias: [2,4] },
+        { id: 20, nombre: "Lívano, Paola", escuela: "EP 7", turno: "Mañana", cargo: "ZP", dias: [1,2,4] },
+        { id: 21, nombre: "Amigo, Mariano", escuela: "EP 7", turno: "Mañana", cargo: "ZP", dias: [0] },
+        { id: 22, nombre: "Saturnino, Camila", escuela: "EP 7", turno: "Mañana", cargo: "ZP", dias: [3,5] },
+        { id: 23, nombre: "Medina, Fabio", escuela: "EP 7", turno: "Mañana", cargo: "MUP", dias: [3,5] },
+        { id: 24, nombre: "Tierno, Martín", escuela: "EP 7", turno: "Mañana", cargo: "MUP", dias: [5] },
+        { id: 25, nombre: "Viera, Martín", escuela: "EP 7", turno: "Mañana", cargo: "MPP", dias: [1,3] },
+        { id: 26, nombre: "Ahumada, Lorena", escuela: "EP 7", turno: "Mañana", cargo: "MPP", dias: [3] },
+        { id: 27, nombre: "Perazzo, Fernando", escuela: "EP 7", turno: "Mañana", cargo: "MPP", dias: [1,2,3] },
+        { id: 28, nombre: "Bargas, Micaela", escuela: "EP 7", turno: "Mañana", cargo: "MTP", dias: [1,3] },
+        { id: 29, nombre: "Barbetti, Melina", escuela: "EP 7", turno: "Mañana", cargo: "AI", dias: [1,3] },
+        { id: 30, nombre: "Garassi, Silvina", escuela: "EP 7", turno: "Mañana", cargo: "AI", dias: [2,4] },
+        { id: 31, nombre: "Barrachini, Vanina", escuela: "EP 7", turno: "Mañana", cargo: "AI", dias: [2,5] },
+        { id: 32, nombre: "Mingorance, Laura", escuela: "EP 7", turno: "Mañana", cargo: "Bibliotecaria", dias: [1,2,3,4,5] },
+        { id: 33, nombre: "Nagüel, Carina", escuela: "EP 7", turno: "Mañana", cargo: "Equipo de Conducción", dias: [1,2,3,4,5] },
+        { id: 34, nombre: "Alonso, Marianela", escuela: "EP 7", turno: "Mañana", cargo: "EOE", dias: [2,3,4] },
+        { id: 35, nombre: "Yezzi, Julieta", escuela: "EP 7", turno: "Mañana", cargo: "EOE", dias: [2,4] },
+        { id: 36, nombre: "Elías, Eugenia", escuela: "EP 7", turno: "Mañana", cargo: "EOE", dias: [2,3,5] },
+        { id: 37, nombre: "Rizzo, Juan", escuela: "EP 7", turno: "Mañana", cargo: "Equipo de Conducción", dias: [1,3,5] },
+        { id: 38, nombre: "Csup, Alan", escuela: "EP 7", turno: "Mañana", cargo: "Equipo de Conducción", dias: [2,4] },
+        { id: 39, nombre: "Palacios, Florencia", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 40, nombre: "Savelli, Laura", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 41, nombre: "Rocchieri, Ivana", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 42, nombre: "Perafán, Eliana", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 43, nombre: "Citrángolo, Miriam", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 44, nombre: "Aragonés, Yesica", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 45, nombre: "Papavero, Valeria", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 46, nombre: "Lucero, Cintia", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 47, nombre: "Bustos, Melisa", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 48, nombre: "Aliano, Giselle", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 49, nombre: "Acosta, Noelia", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 50, nombre: "Botta, Romina", escuela: "EP 7", turno: "Tarde", cargo: "MG", dias: [1,2,3,4,5] },
+        { id: 51, nombre: "Romero, Marianela", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 52, nombre: "Chavez, Antonela", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 53, nombre: "García, Carina", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 54, nombre: "Obregón, Laura", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 55, nombre: "Messina, Romina", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 56, nombre: "Gorosito, Nélida", escuela: "EP 7", turno: "Tarde", cargo: "MG5", dias: [1,2,3,4,5] },
+        { id: 57, nombre: "Duarte, Franco", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [4,5] },
+        { id: 58, nombre: "Calisti, Matías", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [2,4] },
+        { id: 59, nombre: "Rafasquino, Raúl", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [3,5] },
+        { id: 60, nombre: "Elías, Francisco", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [2,4] },
+        { id: 61, nombre: "Lingeri, Gisele", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [1,4] },
+        { id: 62, nombre: "Lívano, Paola", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [1,3] },
+        { id: 63, nombre: "Figuerón, Martín", escuela: "EP 7", turno: "Tarde", cargo: "ZP", dias: [1,3,5] },
+        { id: 64, nombre: "Medina, Fabio", escuela: "EP 7", turno: "Tarde", cargo: "MUP", dias: [1,3,5] },
+        { id: 65, nombre: "Tierno, Martín", escuela: "EP 7", turno: "Tarde", cargo: "MUP", dias: [1,3] },
+        { id: 66, nombre: "Niesi, Camila", escuela: "EP 7", turno: "Tarde", cargo: "MPP", dias: [4] },
+        { id: 67, nombre: "Leguizamón, Susana", escuela: "EP 7", turno: "Tarde", cargo: "MPP", dias: [3] },
+        { id: 68, nombre: "Viera, Martín", escuela: "EP 7", turno: "Tarde", cargo: "MPP", dias: [1] },
+        { id: 69, nombre: "Tealdi, Trinidad", escuela: "EP 7", turno: "Tarde", cargo: "MTP", dias: [2,3,4] },
+        { id: 70, nombre: "Altieri, Fabiana", escuela: "EP 7", turno: "Tarde", cargo: "AI", dias: [2,4,5] },
+        { id: 71, nombre: "Garassi, Silvina", escuela: "EP 7", turno: "Tarde", cargo: "AI", dias: [2,4] },
+        { id: 72, nombre: "Barrachini, Vanina", escuela: "EP 7", turno: "Tarde", cargo: "AI", dias: [2,3] },
+        { id: 73, nombre: "Alonso, Marianela", escuela: "EP 7", turno: "Tarde", cargo: "EOE", dias: [1,5] },
+        { id: 74, nombre: "Yezzi, Julieta", escuela: "EP 7", turno: "Tarde", cargo: "EOE", dias: [1,3,5] },
+        { id: 75, nombre: "Elías, Eugenia", escuela: "EP 7", turno: "Tarde", cargo: "EOE", dias: [1,2,4] },
+        { id: 76, nombre: "Santillán, Gabriela", escuela: "EP 7", turno: "Tarde", cargo: "Equipo de Conducción", dias: [1,2,3,4,5] },
+        { id: 77, nombre: "Rizzo, Juan", escuela: "EP 7", turno: "Tarde", cargo: "Equipo de Conducción", dias: [2,4] },
+        { id: 78, nombre: "Csup, Alan", escuela: "EP 7", turno: "Tarde", cargo: "Equipo de Conducción", dias: [1,3,5] },
+        // Auxiliares
+        { id: 79, nombre: "[Auxiliar] Montiel, Guillermo", escuela: "EP 7", turno: "Mañana", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 80, nombre: "[Auxiliar] Vilche, Silvia", escuela: "EP 7", turno: "Mañana", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 81, nombre: "[Auxiliar] Gómez, Luciana", escuela: "EP 7", turno: "Mañana", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 82, nombre: "[Auxiliar] Marín, María del Carmen", escuela: "EP 7", turno: "Mañana", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 83, nombre: "[Auxiliar] Román, Victoria", escuela: "EP 7", turno: "Tarde", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 84, nombre: "[Auxiliar] Marssani, Agustín", escuela: "EP 7", turno: "Tarde", cargo: "Auxiliar", dias: [0] },
+        { id: 85, nombre: "[Auxiliar] Bianco, Yanina", escuela: "EP 7", turno: "Tarde", cargo: "Auxiliar", dias: [1,2,3,4,5] },
+        { id: 86, nombre: "[Auxiliar] Peracca, Mónica", escuela: "EP 7", turno: "Tarde", cargo: "Auxiliar", dias: [1,2,3,4,5] }
+    ];
+
+    let turnoActivo = 'Mañana';
+    let registrosBase = {};
+    let unsubscribeFirestore = null; // Para limpiar escuchas anteriores
+
+    document.getElementById('fechaParo').valueAsDate = new Date();
+
+    function inicializarDia() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!fecha) return alert("Por favor, selecciona una fecha.");
+
+        const partesFecha = fecha.split('-');
+        const objetoFecha = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
+        const numeroDiaSemana = objetoFecha.getDay();
+
+        // Si había una escucha previa de otra fecha, la cancelamos
+        if (unsubscribeFirestore) unsubscribeFirestore();
+
+        // Escuchar en tiempo real los cambios del documento correspondiente a esta fecha
+        unsubscribeFirestore = db.collection("registros_paros").doc(fecha).onSnapshot((doc) => {
+            if (doc.exists) {
+                // Si la fecha ya tiene datos guardados en Firestore
+                registrosBase[fecha] = doc.data().docentes;
+            } else {
+                // Si es un día nuevo en la nube, se mapea la base local
+                registrosBase[fecha] = baseDocentes.map(docente => {
+                    const leCorrespondeIr = docente.dias ? docente.dias.includes(numeroDiaSemana) : false;
+                    return {
+                        id: docente.id,
+                        nombre: docente.nombre, 
+                        escuela: docente.escuela,
+                        turno: docente.turno, 
+                        cargo: docente.cargo || "Sin Especificar", 
+                        leToca: leCorrespondeIr,
+                        estado: "Sin responder"
+                    };
+                });
+            }
+
+            document.getElementById('cardResultados').style.display = 'block';
+            document.getElementById('cardPlanilla').style.display = 'block';
+            
+            renderDocentes();
+            calcularPorcentajes();
+        }, (error) => {
+            console.error("Error al conectar con Firebase:", error);
+            alert("Error al cargar datos desde la nube. Revisa las credenciales de Firebase.");
+        });
+    }
+
+    function renderDocentes() {
+        const fecha = document.getElementById('fechaParo').value;
+        const listaContainer = document.getElementById('listaDocentes');
+        listaContainer.innerHTML = '';
+
+        if (!registrosBase[fecha]) return;
+
+        const docentesFiltrados = registrosBase[fecha].filter(d => d.turno === turnoActivo);
+
+        if(docentesFiltrados.length === 0) {
+            listaContainer.innerHTML = '<p style="text-align:center; padding:10px; color:#6b7280;">No hay agentes cargados en este turno.</p>';
+            return;
+        }
+
+        const grupos = docentesFiltrados.reduce((acc, docente) => {
+            const cargo = docente.cargo || "Sin Especificar";
+            if (!acc[cargo]) acc[cargo] = [];
+            acc[cargo].push(docente);
+            return acc;
+        }, {});
+
+        for (const cargo in grupos) {
+            const headerGrupo = document.createElement('div');
+            headerGrupo.className = 'grupo-cargo-header';
+            headerGrupo.innerText = `${cargo} (${grupos[cargo].length})`;
+            listaContainer.appendChild(headerGrupo);
+
+            grupos[cargo].forEach(docente => {
+                const row = document.createElement('div');
+                row.className = 'docente-row';
+                
+                if (docente.estado === undefined) {
+                    docente.estado = docente.adhiere ? "Adhiere" : "No adhiere";
+                    delete docente.adhiere;
+                }
+
+                row.innerHTML = `
+                    <div class="docente-info">
+                        <div class="docente-name" title="${docente.nombre}">${docente.nombre}</div>
+                        <div class="docente-sc">${docente.escuela} - ${docente.cargo}</div>
+                    </div>
+                    <div class="checks-container">
+                        <div class="check-item">
+                            <label>¿Le toca?</label>
+                            <input type="checkbox" id="toca_${docente.id}" ${docente.leToca ? 'checked' : ''} onchange="actualizarLeToca(${docente.id}, this.checked)">
+                        </div>
+                        <div class="select-item" id="container_estado_${docente.id}" style="${docente.leToca ? '' : 'display:none;'}">
+                            <label>Postura</label>
+                            <select id="estado_${docente.id}" onchange="actualizarEstado(${docente.id}, this.value)">
+                                <option value="Sin responder" ${docente.estado === 'Sin responder' ? 'selected' : ''}>⏳ No contestó aún</option>
+                                <option value="Adhiere" ${docente.estado === 'Adhiere' ? 'selected' : ''}>✊ Adhiere</option>
+                                <option value="No adhiere" ${docente.estado === 'No adhiere' ? 'selected' : ''}>✅ No adhiere</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                listaContainer.appendChild(row);
+            });
+        }
+    }
+
+    function actualizarLeToca(id, valor) {
+        const fecha = document.getElementById('fechaParo').value;
+        const docente = registrosBase[fecha].find(d => d.id === id);
+        if (docente) {
+            docente.leToca = valor;
+            
+            if (!valor) {
+                docente.estado = "Sin responder";
+            }
+            
+            const containerEstado = document.getElementById(`container_estado_${id}`);
+            if (containerEstado) {
+                containerEstado.style.display = valor ? '' : 'none';
+                const selectEstado = document.getElementById(`estado_${id}`);
+                if (selectEstado) selectEstado.value = "Sin responder";
+            }
+            
+            calcularPorcentajes();
+        }
+    }
+
+    function actualizarEstado(id, valor) {
+        const fecha = document.getElementById('fechaParo').value;
+        const docente = registrosBase[fecha].find(d => d.id === id);
+        if (docente) {
+            docente.estado = valor;
+            calcularPorcentajes();
+        }
+    }
+
+    function marcarAsistenciaObligatoria() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!fecha || !registrosBase[fecha]) return;
+
+        registrosBase[fecha].forEach(docente => {
+            if (docente.turno === turnoActivo) {
+                docente.leToca = true;
+            }
+        });
+
+        renderDocentes();
+        calcularPorcentajes();
+    }
+
+    function desmarcarAsistenciaTurno() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!fecha || !registrosBase[fecha]) return;
+
+        registrosBase[fecha].forEach(docente => {
+            if (docente.turno === turnoActivo) {
+                docente.leToca = false;
+                docente.estado = "Sin responder"; 
+            }
+        });
+
+        renderDocentes();
+        calcularPorcentajes();
+    }
+
+    function calcularPorcentajes() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!fecha || !registrosBase[fecha]) return;
+        const diaData = registrosBase[fecha];
+
+        const activosMañana = diaData.filter(d => d.turno === 'Mañana' && d.leToca === true);
+        const activosTarde = diaData.filter(d => d.turno === 'Tarde' && d.leToca === true);
+
+        // --- TURNO MAÑANA ---
+        const docentesM = activosMañana.filter(d => d.cargo !== 'Auxiliar' && !d.nombre.includes('[Auxiliar]'));
+        const adhDocentesM = docentesM.filter(d => d.estado === 'Adhiere').length;
+        const pctDocM = docentesM.length > 0 ? Math.round((adhDocentesM / docentesM.length) * 100) : 0;
+        document.getElementById('pctManana').innerText = `${pctDocM}%`;
+        document.getElementById('cantManana').innerText = `(${adhDocentesM} de ${docentesM.length} activos)`;
+
+        const auxiliaresM = activosMañana.filter(d => d.cargo === 'Auxiliar' || d.nombre.includes('[Auxiliar]'));
+        const adhAuxM = auxiliaresM.filter(d => d.estado === 'Adhiere').length;
+        const pctAuxM = auxiliaresM.length > 0 ? Math.round((adhAuxM / auxiliaresM.length) * 100) : 0;
+        document.getElementById('pctAuxManana').innerText = `${pctAuxM}%`;
+        document.getElementById('cantAuxManana').innerText = `(${adhAuxM} de ${auxiliaresM.length} activos)`;
+
+        // --- TURNO TARDE ---
+        const docentesT = activosTarde.filter(d => d.cargo !== 'Auxiliar' && !d.nombre.includes('[Auxiliar]'));
+        const adhDocentesT = docentesT.filter(d => d.estado === 'Adhiere').length;
+        const pctDocT = docentesT.length > 0 ? Math.round((adhDocentesT / docentesT.length) * 100) : 0;
+        document.getElementById('pctTarde').innerText = `${pctDocT}%`;
+        document.getElementById('cantTarde').innerText = `(${adhDocentesT} de ${docentesT.length} activos)`;
+
+        const auxiliaresT = activosTarde.filter(d => d.cargo === 'Auxiliar' || d.nombre.includes('[Auxiliar]'));
+        const adhAuxT = auxiliaresT.filter(d => d.estado === 'Adhiere').length;
+        const pctAuxT = auxiliaresT.length > 0 ? Math.round((adhAuxT / auxiliaresT.length) * 100) : 0;
+        document.getElementById('pctAuxTarde').innerText = `${pctAuxT}%`;
+        document.getElementById('cantAuxTarde').innerText = `(${adhAuxT} de ${auxiliaresT.length} activos)`;
+    }
+
+    function cambiarTurno(turno) {
+        turnoActivo = turno;
+        document.getElementById('btnM').classList.toggle('active', turno === 'Mañana');
+        document.getElementById('btnT').classList.toggle('active', turno === 'Tarde');
+        renderDocentes();
+    }
+
+    // Guarda el registro del día actual en Firestore
+    function guardarAsistenciaDia() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!fecha || !registrosBase[fecha]) return alert("No hay información cargada para guardar.");
+
+        db.collection("registros_paros").doc(fecha).set({
+            docentes: registrosBase[fecha],
+            ultimaModificacion: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+            alert("¡Registro guardado y sincronizado en la nube con éxito!");
+        })
+        .catch((error) => {
+            alert("Error al guardar en Firebase: " + error.message);
+        });
+    }
+
+    function exportarExcelDia() {
+        const fecha = document.getElementById('fechaParo').value;
+        if (!registrosBase[fecha]) return alert("No hay datos cargados en esta fecha para exportar.");
+
+        const diaData = registrosBase[fecha];
+        
+        let csvContent = "\uFEFFFecha;Tipo;Cargo;Nombre;Escuela;Turno;¿Le tocaba?;Postura / Adhesión;Estado Final\n";
+
+        diaData.forEach(d => {
+            const esAuxiliar = d.cargo === "Auxiliar" || d.nombre.includes('[Auxiliar]');
+            const tipo = esAuxiliar ? "Auxiliar" : "Docente";
+            const nombreLimpio = d.nombre.replace('[Auxiliar] ', '');
+            
+            let estadoFinal = "No le correspondía asistir";
+            let postura = "N/C";
+            
+            if (d.leToca) {
+                postura = d.estado || "Sin responder";
+                if (postura === "Adhiere") {
+                    estadoFinal = "Adhiere a Medida de Fuerza";
+                } else if (postura === "No adhiere") {
+                    estadoFinal = "Asistencia Normal / No Adhiere";
+                } else {
+                    estadoFinal = "Pendiente de confirmación";
+                }
+            }
+
+            csvContent += `${fecha};${tipo};${d.cargo};"${nombreLimpio}";${d.escuela};${d.turno};${d.leToca ? 'SÍ' : 'NO'};${postura};${estadoFinal}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Reporte_Nominal_Paro_${fecha}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
