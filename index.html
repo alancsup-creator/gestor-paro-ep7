@@ -110,7 +110,21 @@
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1;">
                     <label>Cargo</label>
-                    <input type="text" id="nuevoCargo" placeholder="Ej: MG, ZP, Auxiliar">
+                    <select id="nuevoCargoSelect" onchange="verificarCargoOtro(this.value)">
+                        <option value="MG">MG (Maestro/a de Grado)</option>
+                        <option value="MG5">MG5 (Quinta Hora)</option>
+                        <option value="ZP">ZP (Plástica / Educación Artística)</option>
+                        <option value="MUP">MUP (Música)</option>
+                        <option value="MPP">MPP (Educación Física)</option>
+                        <option value="MTP">MTP (Inglés)</option>
+                        <option value="AI">AI (Acompañante / Integración)</option>
+                        <option value="EOE">EOE (Equipo de Orientación Escolar)</option>
+                        <option value="Bibliotecaria">Bibliotecaria</option>
+                        <option value="Equipo de Conducción">Equipo de Conducción</option>
+                        <option value="Auxiliar">Auxiliar</option>
+                        <option value="OTRO">Otro...</option>
+                    </select>
+                    <input type="text" id="nuevoCargoTexto" placeholder="Escriba el cargo..." style="display: none; margin-top: 5px;">
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label>Escuela</label>
@@ -335,6 +349,17 @@
         }
     }
 
+    function verificarCargoOtro(valor) {
+        const inputTexto = document.getElementById('nuevoCargoTexto');
+        if (valor === 'OTRO') {
+            inputTexto.style.display = 'block';
+            inputTexto.focus();
+        } else {
+            inputTexto.style.display = 'none';
+            inputTexto.value = '';
+        }
+    }
+
     function renderizarListaGestion() {
         const container = document.getElementById('listaGestionPersonal');
         if (!container) return;
@@ -355,23 +380,29 @@
 
     function agregarNuevoDocente() {
         const nombre = document.getElementById('nuevoNombre').value.trim();
-        const cargo = document.getElementById('nuevoCargo').value.trim();
+        const selectCargo = document.getElementById('nuevoCargoSelect').value;
+        const textoCargo = document.getElementById('nuevoCargoTexto').value.trim();
         const escuela = document.getElementById('nuevaEscuela').value.trim() || 'EP 7';
         const turno = document.getElementById('nuevoTurno').value;
+
+        let cargoFinal = selectCargo;
+        if (selectCargo === 'OTRO') {
+            cargoFinal = textoCargo;
+        }
 
         const checksDias = document.querySelectorAll('.check-dia:checked');
         const dias = Array.from(checksDias).map(cb => parseInt(cb.value));
 
-        if (!nombre || !cargo) {
+        if (!nombre || !cargoFinal) {
             return alert('Por favor, completá el nombre y el cargo.');
         }
 
         const nuevoAgente = {
             id: Date.now(),
-            nombre: cargo.toLowerCase() === 'auxiliar' ? `[Auxiliar] ${nombre}` : nombre,
+            nombre: cargoFinal.toLowerCase() === 'auxiliar' ? `[Auxiliar] ${nombre}` : nombre,
             escuela: escuela,
             turno: turno,
-            cargo: cargo,
+            cargo: cargoFinal,
             dias: dias
         };
 
@@ -382,7 +413,9 @@
         .then(() => {
             alert('¡Agente guardado en el plantel institucional con éxito!');
             document.getElementById('nuevoNombre').value = '';
-            document.getElementById('nuevoCargo').value = '';
+            document.getElementById('nuevoCargoTexto').value = '';
+            document.getElementById('nuevoCargoSelect').value = 'MG';
+            verificarCargoOtro('MG');
             renderizarListaGestion();
             
             // Si ya hay un día cargado, actualizar la lista visible
