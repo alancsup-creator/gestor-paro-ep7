@@ -41,8 +41,9 @@
         .btn-sec:hover { background: #059669; }
         .btn-warning { background: #f59e0b; color: #fff; }
         .btn-warning:hover { background: #d97706; }
-        .btn-danger { background: #6b7280; color: #fff; }
-        .btn-danger:hover { background: #4b5563; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; }
         
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .stat-box { background: #eff6ff; border-left: 4px solid var(--primary-light); padding: 10px; border-radius: 8px; text-align: center; }
@@ -68,6 +69,12 @@
         .select-item select { padding: 4px 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 12px; margin-top: 2px; outline: none; background: #fff; }
         
         .acciones-rapidas { display: flex; gap: 10px; margin-bottom: 15px; }
+
+        /* Estilos Gestión de Personal */
+        .dias-checkboxes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 5px; }
+        .dias-checkboxes label { font-size: 12px; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+        .lista-gestion-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .lista-gestion-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -84,6 +91,57 @@
             <input type="date" id="fechaParo">
         </div>
         <button class="btn" onclick="inicializarDia()">Cargar / Ver Día</button>
+    </div>
+
+    <!-- MÓDULO DE GESTIÓN DE PERSONAL -->
+    <div class="card">
+        <h2 onclick="toggleGestionPersonal()" style="cursor: pointer;">
+            ⚙️ Gestión de Personal
+            <span id="iconGestion" style="font-size: 12px;">[Abrir]</span>
+        </h2>
+        <div id="bodyGestionPersonal" style="display: none; margin-top: 10px;">
+            <p style="font-size: 12px; color: #6b7280; margin-bottom: 10px;">Agregar un nuevo agente al plantel general o eliminar existentes:</p>
+
+            <div class="form-group">
+                <label>Nombre y Apellido</label>
+                <input type="text" id="nuevoNombre" placeholder="Ej: Pérez, Juan">
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Cargo</label>
+                    <input type="text" id="nuevoCargo" placeholder="Ej: MG, ZP, Auxiliar">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Escuela</label>
+                    <input type="text" id="nuevaEscuela" value="EP 7">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Turno</label>
+                <select id="nuevoTurno">
+                    <option value="Mañana">Mañana</option>
+                    <option value="Tarde">Tarde</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Días que le corresponde asistir:</label>
+                <div class="dias-checkboxes">
+                    <label><input type="checkbox" class="check-dia" value="1" checked> Lu</label>
+                    <label><input type="checkbox" class="check-dia" value="2" checked> Ma</label>
+                    <label><input type="checkbox" class="check-dia" value="3" checked> Mi</label>
+                    <label><input type="checkbox" class="check-dia" value="4" checked> Ju</label>
+                    <label><input type="checkbox" class="check-dia" value="5" checked> Vi</label>
+                </div>
+            </div>
+
+            <button class="btn btn-sec" style="margin-bottom: 15px;" onclick="agregarNuevoDocente()">+ Guardar Nuevo Agente</button>
+
+            <h3 style="font-size: 14px; color: var(--primary); margin-bottom: 8px; border-top: 1px solid #ddd; padding-top: 10px;">Plantel Actual</h3>
+            <div id="listaGestionPersonal" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
     </div>
 
     <div class="card" id="cardResultados" style="display:none;">
@@ -145,23 +203,22 @@
 <script>
     // -------------------------------------------------------------
     // CONFIGURACIÓN DE FIREBASE
-    // Reemplazá estos valores con los datos de tu consola de Firebase
     // -------------------------------------------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyAxHkh16z3WkI8QmXnM99m1-rgfbwV-ALo",
-  authDomain: "gestor-paro-ep7.firebaseapp.com",
-  databaseURL: "https://gestor-paro-ep7-default-rtdb.firebaseio.com",
-  projectId: "gestor-paro-ep7",
-  storageBucket: "gestor-paro-ep7.firebasestorage.app",
-  messagingSenderId: "364511956649",
-  appId: "1:364511956649:web:6467744f2ca01959ca23b8",
-  measurementId: "G-4PSM7SFQVL"
-};
-    // Inicializar Firebase y Firestore
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxHkh16z3WkI8QmXnM99m1-rgfbwV-ALo",
+      authDomain: "gestor-paro-ep7.firebaseapp.com",
+      databaseURL: "https://gestor-paro-ep7-default-rtdb.firebaseio.com",
+      projectId: "gestor-paro-ep7",
+      storageBucket: "gestor-paro-ep7.firebasestorage.app",
+      messagingSenderId: "364511956649",
+      appId: "1:364511956649:web:6467744f2ca01959ca23b8",
+      measurementId: "G-4PSM7SFQVL"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const baseDocentes = [
+    let baseDocentes = [
         { id: 1, nombre: "Romero, Marianela", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
         { id: 2, nombre: "Gunilla, Paola", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
         { id: 3, nombre: "Chavez, Antonela", escuela: "EP 7", turno: "Mañana", cargo: "MG", dias: [1,2,3,4,5] },
@@ -253,9 +310,105 @@ const firebaseConfig = {
 
     let turnoActivo = 'Mañana';
     let registrosBase = {};
-    let unsubscribeFirestore = null; // Para limpiar escuchas anteriores
+    let unsubscribeFirestore = null;
 
     document.getElementById('fechaParo').valueAsDate = new Date();
+
+    // Sincronizar plantilla inicial de personal desde Firestore si existe
+    db.collection("configuracion").doc("plantel").onSnapshot((doc) => {
+        if (doc.exists && doc.data().docentes) {
+            baseDocentes = doc.data().docentes;
+        }
+        renderizarListaGestion();
+    });
+
+    function toggleGestionPersonal() {
+        const body = document.getElementById('bodyGestionPersonal');
+        const icon = document.getElementById('iconGestion');
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            icon.innerText = '[Cerrar]';
+            renderizarListaGestion();
+        } else {
+            body.style.display = 'none';
+            icon.innerText = '[Abrir]';
+        }
+    }
+
+    function renderizarListaGestion() {
+        const container = document.getElementById('listaGestionPersonal');
+        if (!container) return;
+        container.innerHTML = '';
+
+        baseDocentes.forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'lista-gestion-item';
+            div.innerHTML = `
+                <div>
+                    <strong>${d.nombre}</strong> (${d.cargo} - ${d.turno})
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="eliminarDocenteBase(${d.id})">Borrar</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function agregarNuevoDocente() {
+        const nombre = document.getElementById('nuevoNombre').value.trim();
+        const cargo = document.getElementById('nuevoCargo').value.trim();
+        const escuela = document.getElementById('nuevaEscuela').value.trim() || 'EP 7';
+        const turno = document.getElementById('nuevoTurno').value;
+
+        const checksDias = document.querySelectorAll('.check-dia:checked');
+        const dias = Array.from(checksDias).map(cb => parseInt(cb.value));
+
+        if (!nombre || !cargo) {
+            return alert('Por favor, completá el nombre y el cargo.');
+        }
+
+        const nuevoAgente = {
+            id: Date.now(),
+            nombre: cargo.toLowerCase() === 'auxiliar' ? `[Auxiliar] ${nombre}` : nombre,
+            escuela: escuela,
+            turno: turno,
+            cargo: cargo,
+            dias: dias
+        };
+
+        baseDocentes.push(nuevoAgente);
+
+        // Sincronizar plantel global en Firestore
+        db.collection("configuracion").doc("plantel").set({ docentes: baseDocentes })
+        .then(() => {
+            alert('¡Agente guardado en el plantel institucional con éxito!');
+            document.getElementById('nuevoNombre').value = '';
+            document.getElementById('nuevoCargo').value = '';
+            renderizarListaGestion();
+            
+            // Si ya hay un día cargado, actualizar la lista visible
+            const fecha = document.getElementById('fechaParo').value;
+            if (fecha && registrosBase[fecha]) {
+                inicializarDia();
+            }
+        })
+        .catch(err => alert("Error al guardar en Firebase: " + err.message));
+    }
+
+    function eliminarDocenteBase(id) {
+        if (confirm('¿Seguro que querés eliminar a este agente del plantel general?')) {
+            baseDocentes = baseDocentes.filter(d => d.id !== id);
+            
+            db.collection("configuracion").doc("plantel").set({ docentes: baseDocentes })
+            .then(() => {
+                renderizarListaGestion();
+                const fecha = document.getElementById('fechaParo').value;
+                if (fecha && registrosBase[fecha]) {
+                    inicializarDia();
+                }
+            })
+            .catch(err => alert("Error al actualizar en Firebase: " + err.message));
+        }
+    }
 
     function inicializarDia() {
         const fecha = document.getElementById('fechaParo').value;
@@ -265,16 +418,12 @@ const firebaseConfig = {
         const objetoFecha = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
         const numeroDiaSemana = objetoFecha.getDay();
 
-        // Si había una escucha previa de otra fecha, la cancelamos
         if (unsubscribeFirestore) unsubscribeFirestore();
 
-        // Escuchar en tiempo real los cambios del documento correspondiente a esta fecha
         unsubscribeFirestore = db.collection("registros_paros").doc(fecha).onSnapshot((doc) => {
             if (doc.exists) {
-                // Si la fecha ya tiene datos guardados en Firestore
                 registrosBase[fecha] = doc.data().docentes;
             } else {
-                // Si es un día nuevo en la nube, se mapea la base local
                 registrosBase[fecha] = baseDocentes.map(docente => {
                     const leCorrespondeIr = docente.dias ? docente.dias.includes(numeroDiaSemana) : false;
                     return {
@@ -462,7 +611,6 @@ const firebaseConfig = {
         renderDocentes();
     }
 
-    // Guarda el registro del día actual en Firestore
     function guardarAsistenciaDia() {
         const fecha = document.getElementById('fechaParo').value;
         if (!fecha || !registrosBase[fecha]) return alert("No hay información cargada para guardar.");
