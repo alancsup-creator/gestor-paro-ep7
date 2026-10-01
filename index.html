@@ -365,9 +365,10 @@
     }
 
     function renderizarListaGestion() {
-    const contenedor = document.getElementById("listaPersonalGestion");
+    // Cambiamos 'listaPersonalGestion' por 'listaGestionPersonal'
+    const contenedor = document.getElementById("listaGestionPersonal"); 
     if (!contenedor) {
-        console.error("No se encontró el elemento con ID 'listaPersonalGestion' en el HTML.");
+        console.error("No se encontró el elemento con ID 'listaGestionPersonal' en el HTML.");
         return;
     }
 
@@ -377,12 +378,10 @@
 
     baseDocentes.forEach((docente, index) => {
         try {
-            // Nombre y cargo seguros
             const nombre = docente.nombre || "Sin Nombre";
             const cargo = docente.cargo || "Sin Cargo";
             const turno = docente.turno || "";
 
-            // Formatear texto de días sin que tire error si dias es undefined o nulo
             let diasTexto = "Todos los días";
             if (docente.dias && Array.isArray(docente.dias) && docente.dias.length > 0) {
                 diasTexto = docente.dias.map(d => nombresDias[d] || d).join(", ");
@@ -417,48 +416,6 @@
         } catch (err) {
             console.error(`Error al procesar el docente en el índice ${index}:`, err, docente);
         }
-    });
-}
-    function renderizarListaGestion() {
-    const contenedor = document.getElementById("listaPersonalGestion");
-    if (!contenedor) return;
-
-    contenedor.innerHTML = "";
-
-    const nombresDias = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie" };
-
-    baseDocentes.forEach((docente, index) => {
-        // Validar si existen días o si es un registro previo/completo
-        let diasTexto = "Todos los días";
-        if (docente.dias && Array.isArray(docente.dias) && docente.dias.length > 0) {
-            diasTexto = docente.dias.map(d => nombresDias[d] || d).join(", ");
-        }
-
-        const item = document.createElement("div");
-        item.className = "item-docente-gestion";
-
-        item.innerHTML = `
-            <div class="info-docente" style="margin-bottom: 8px;">
-                <strong>${docente.nombre}</strong> (${docente.cargo || "Sin cargo"}) - <em>${docente.turno || "Sin turno"}</em>
-                <br><small style="color: #666;">Días de asistencia: <strong>${diasTexto}</strong></small>
-            </div>
-            <div class="acciones-docente">
-                <button type="button" onclick="mostrarFormularioEditar(${index})" class="btn-editar">Editar Días</button>
-                <button type="button" onclick="eliminarDocenteBase(${index})" class="btn-eliminar">Eliminar</button>
-            </div>
-            <div id="form-edit-${index}" class="form-editar-dias" style="display: none; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px;">
-                <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
-                <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
-                <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
-                <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
-                <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
-                <div style="margin-top: 8px;">
-                    <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
-                    <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
-                </div>
-            </div>
-        `;
-        contenedor.appendChild(item);
     });
 }
     function eliminarDocenteBase(id) {
