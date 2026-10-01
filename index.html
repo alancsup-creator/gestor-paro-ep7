@@ -329,13 +329,13 @@
     document.getElementById('fechaParo').valueAsDate = new Date();
 
     // Sincronizar plantilla inicial de personal desde Firestore si existe
-    db.collection("configuracion").doc("plantel").onSnapshot((doc) => {
-        if (doc.exists && doc.data().docentes) {
-            baseDocentes = doc.data().docentes;
-        }
-        renderizarListaGestion();
-    });
-
+   db.collection("configuracion_ep7").doc("plantel").onSnapshot((doc) => {
+    if (doc.exists && doc.data().docentes) {
+        baseDocentes = doc.data().docentes;
+    }
+    renderizarListaGestion();
+});
+    
     function toggleGestionPersonal() {
         const body = document.getElementById('bodyGestionPersonal');
         const icon = document.getElementById('iconGestion');
@@ -409,7 +409,7 @@
         baseDocentes.push(nuevoAgente);
 
         // Sincronizar plantel global en Firestore
-        db.collection("configuracion").doc("plantel").set({ docentes: baseDocentes })
+       db.collection("configuracion_ep7").doc("plantel").set({ docentes: baseDocentes })
         .then(() => {
             alert('¡Agente guardado en el plantel institucional con éxito!');
             document.getElementById('nuevoNombre').value = '';
@@ -431,7 +431,7 @@
         if (confirm('¿Seguro que querés eliminar a este agente del plantel general?')) {
             baseDocentes = baseDocentes.filter(d => d.id !== id);
             
-            db.collection("configuracion").doc("plantel").set({ docentes: baseDocentes })
+            db.collection("configuracion_ep7").doc("plantel").set({ docentes: baseDocentes })
             .then(() => {
                 renderizarListaGestion();
                 const fecha = document.getElementById('fechaParo').value;
@@ -453,7 +453,7 @@
 
         if (unsubscribeFirestore) unsubscribeFirestore();
 
-        unsubscribeFirestore = db.collection("registros_paros").doc(fecha).onSnapshot((doc) => {
+unsubscribeFirestore = db.collection("registros_paros_ep7").doc(fecha).onSnapshot((doc) => {
             if (doc.exists) {
                 registrosBase[fecha] = doc.data().docentes;
             } else {
@@ -648,10 +648,10 @@
         const fecha = document.getElementById('fechaParo').value;
         if (!fecha || !registrosBase[fecha]) return alert("No hay información cargada para guardar.");
 
-        db.collection("registros_paros").doc(fecha).set({
-            docentes: registrosBase[fecha],
-            ultimaModificacion: firebase.firestore.FieldValue.serverTimestamp()
-        })
+        db.collection("registros_paros_ep7").doc(fecha).set({
+    docentes: registrosBase[fecha],
+    ultimaModificacion: firebase.firestore.FieldValue.serverTimestamp()
+})
         .then(() => {
             alert("¡Registro guardado y sincronizado en la nube con éxito!");
         })
