@@ -366,44 +366,57 @@
 
     function renderizarListaGestion() {
     const contenedor = document.getElementById("listaPersonalGestion");
-    if (!contenedor) return;
-    
+    if (!contenedor) {
+        console.error("No se encontró el elemento con ID 'listaPersonalGestion' en el HTML.");
+        return;
+    }
+
     contenedor.innerHTML = "";
 
-    // Mapeo para traducir los números de días a nombres legibles
     const nombresDias = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie" };
 
     baseDocentes.forEach((docente, index) => {
-        // Validación segura de los días asignados
-        let diasTexto = "Todos los días";
-        if (docente.dias && Array.isArray(docente.dias) && docente.dias.length > 0) {
-            diasTexto = docente.dias.map(d => nombresDias[d] || d).join(", ");
+        try {
+            // Nombre y cargo seguros
+            const nombre = docente.nombre || "Sin Nombre";
+            const cargo = docente.cargo || "Sin Cargo";
+            const turno = docente.turno || "";
+
+            // Formatear texto de días sin que tire error si dias es undefined o nulo
+            let diasTexto = "Todos los días";
+            if (docente.dias && Array.isArray(docente.dias) && docente.dias.length > 0) {
+                diasTexto = docente.dias.map(d => nombresDias[d] || d).join(", ");
+            }
+
+            const item = document.createElement("div");
+            item.className = "item-docente-gestion";
+            item.style.cssText = "padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 8px;";
+
+            item.innerHTML = `
+                <div class="info-docente">
+                    <strong>${nombre}</strong> (${cargo}) ${turno ? `- <em>${turno}</em>` : ''}
+                    <br><small style="color: #555;">Días de asistencia: <strong>${diasTexto}</strong></small>
+                </div>
+                <div class="acciones-docente" style="margin-top: 5px;">
+                    <button type="button" onclick="mostrarFormularioEditar(${index})">Editar Días</button>
+                    <button type="button" onclick="eliminarDocenteBase(${index})">Eliminar</button>
+                </div>
+                <div id="form-edit-${index}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
+                    <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
+                    <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
+                    <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
+                    <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
+                    <div style="margin-top: 8px;">
+                        <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
+                        <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
+                    </div>
+                </div>
+            `;
+            contenedor.appendChild(item);
+        } catch (err) {
+            console.error(`Error al procesar el docente en el índice ${index}:`, err, docente);
         }
-
-        const item = document.createElement("div");
-        item.className = "item-docente-gestion";
-
-        item.innerHTML = `
-            <div class="info-docente">
-                <strong>${docente.nombre}</strong> (${docente.cargo || "Sin cargo"})
-                <br><small class="text-muted">Días: ${diasTexto}</small>
-            </div>
-            <div class="acciones-docente">
-                <button onclick="mostrarFormularioEditar(${index})" class="btn-editar">Editar días</button>
-                <button onclick="eliminarDocenteBase(${index})" class="btn-eliminar">Eliminar</button>
-            </div>
-            <div id="form-edit-${index}" class="form-editar-dias" style="display: none; margin-top: 10px;">
-                <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
-                <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
-                <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
-                <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
-                <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
-                <br>
-                <button onclick="guardarDiasEditados(${index})">Guardar Días</button>
-                <button onclick="ocultarFormularioEditar(${index})">Cancelar</button>
-            </div>
-        `;
-        contenedor.appendChild(item);
     });
 }
     function renderizarListaGestion() {
