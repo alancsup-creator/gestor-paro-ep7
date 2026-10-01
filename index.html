@@ -157,6 +157,9 @@
             <div id="listaGestionPersonal" style="max-height: 200px; overflow-y: auto;"></div>
         </div>
     </div>
+    <div style="margin-bottom: 12px;">
+    <input type="text" id="buscadorGestion" placeholder="🔍 Buscar por nombre o apellido..." onkeyup="renderizarListaGestion()" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+</div>
 
     <div class="card" id="cardResultados" style="display:none;">
         <h2>Porcentaje de Adhesión Real</h2>
@@ -365,19 +368,34 @@
     }
 
     function renderizarListaGestion() {
-    // Cambiamos 'listaPersonalGestion' por 'listaGestionPersonal'
-    const contenedor = document.getElementById("listaGestionPersonal"); 
-    if (!contenedor) {
-        console.error("No se encontró el elemento con ID 'listaGestionPersonal' en el HTML.");
-        return;
-    }
+    const contenedor = document.getElementById("listaGestionPersonal");
+    if (!contenedor) return;
 
     contenedor.innerHTML = "";
 
+    // Leer el término del buscador (si existe) y pasarlo a minúsculas
+    const inputBuscador = document.getElementById("buscadorGestion");
+    const filtro = inputBuscador ? inputBuscador.value.toLowerCase().trim() : "";
+
     const nombresDias = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie" };
 
-    baseDocentes.forEach((docente, index) => {
+    // Filtrar los docentes según el texto ingresado
+    const docentesFiltrados = baseDocentes.filter(docente => {
+        if (!filtro) return true; // Si está vacío, muestra todos
+        const nombreDocente = (docente.nombre || "").toLowerCase();
+        return nombreDocente.includes(filtro);
+    });
+
+    if (docentesFiltrados.length === 0) {
+        contenedor.innerHTML = `<p style="padding: 10px; color: #666; text-align: center;">No se encontraron agentes que coincidan con "<strong>${filtro}</strong>".</p>`;
+        return;
+    }
+
+    docentesFiltrados.forEach((docente) => {
         try {
+            // Buscamos el índice real en baseDocentes para que al editar o eliminar no afecte al docente equivocado
+            const indexReal = baseDocentes.findIndex(d => d.id ? d.id === docente.id : d.nombre === docente.nombre);
+
             const nombre = docente.nombre || "Sin Nombre";
             const cargo = docente.cargo || "Sin Cargo";
             const turno = docente.turno || "";
@@ -397,24 +415,24 @@
                     <br><small style="color: #555;">Días de asistencia: <strong>${diasTexto}</strong></small>
                 </div>
                 <div class="acciones-docente" style="margin-top: 5px;">
-                    <button type="button" onclick="mostrarFormularioEditar(${index})">Editar Días</button>
-                    <button type="button" onclick="eliminarDocenteBase(${index})">Eliminar</button>
+                    <button type="button" onclick="mostrarFormularioEditar(${indexReal})">Editar Días</button>
+                    <button type="button" onclick="eliminarDocenteBase(${indexReal})">Eliminar</button>
                 </div>
-                <div id="form-edit-${index}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
-                    <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
-                    <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
-                    <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
-                    <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
-                    <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
+                <div id="form-edit-${indexReal}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" value="1" class="chk-edit-${indexReal}"> Lun</label>
+                    <label><input type="checkbox" value="2" class="chk-edit-${indexReal}"> Mar</label>
+                    <label><input type="checkbox" value="3" class="chk-edit-${indexReal}"> Mié</label>
+                    <label><input type="checkbox" value="4" class="chk-edit-${indexReal}"> Jue</label>
+                    <label><input type="checkbox" value="5" class="chk-edit-${indexReal}"> Vie</label>
                     <div style="margin-top: 8px;">
-                        <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
-                        <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
+                        <button type="button" onclick="guardarDiasEditados(${indexReal})">Guardar</button>
+                        <button type="button" onclick="ocultarFormularioEditar(${indexReal})">Cancelar</button>
                     </div>
                 </div>
             `;
             contenedor.appendChild(item);
         } catch (err) {
-            console.error(`Error al procesar el docente en el índice ${index}:`, err, docente);
+            console.error("Error al procesar el docente:", err, docente);
         }
     });
 }
