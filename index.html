@@ -335,7 +335,9 @@
     } else {
         baseDocentes = [];
     }
-    renderizarListaGestion();
+    renderizarListaGestion(); // ¡Importante llamar a la función acá dentro!
+}, (error) => {
+    console.error("Error al escuchar plantel EP7:", error);
 });
     
     function toggleGestionPersonal() {
@@ -404,55 +406,48 @@
         contenedor.appendChild(item);
     });
 }
-    function agregarNuevoDocente() {
-        const nombre = document.getElementById('nuevoNombre').value.trim();
-        const selectCargo = document.getElementById('nuevoCargoSelect').value;
-        const textoCargo = document.getElementById('nuevoCargoTexto').value.trim();
-        const escuela = document.getElementById('nuevaEscuela').value.trim() || 'EP 7';
-        const turno = document.getElementById('nuevoTurno').value;
+    function renderizarListaGestion() {
+    const contenedor = document.getElementById("listaPersonalGestion");
+    if (!contenedor) return;
 
-        let cargoFinal = selectCargo;
-        if (selectCargo === 'OTRO') {
-            cargoFinal = textoCargo;
+    contenedor.innerHTML = "";
+
+    const nombresDias = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie" };
+
+    baseDocentes.forEach((docente, index) => {
+        // Validar si existen días o si es un registro previo/completo
+        let diasTexto = "Todos los días";
+        if (docente.dias && Array.isArray(docente.dias) && docente.dias.length > 0) {
+            diasTexto = docente.dias.map(d => nombresDias[d] || d).join(", ");
         }
 
-        const checksDias = document.querySelectorAll('.check-dia:checked');
-        const dias = Array.from(checksDias).map(cb => parseInt(cb.value));
+        const item = document.createElement("div");
+        item.className = "item-docente-gestion";
 
-        if (!nombre || !cargoFinal) {
-            return alert('Por favor, completá el nombre y el cargo.');
-        }
-
-        const nuevoAgente = {
-            id: Date.now(),
-            nombre: cargoFinal.toLowerCase() === 'auxiliar' ? `[Auxiliar] ${nombre}` : nombre,
-            escuela: escuela,
-            turno: turno,
-            cargo: cargoFinal,
-            dias: dias
-        };
-
-        baseDocentes.push(nuevoAgente);
-
-        // Sincronizar plantel global en Firestore
-       db.collection("configuracion_ep7").doc("plantel").set({ docentes: baseDocentes })
-        .then(() => {
-            alert('¡Agente guardado en el plantel institucional con éxito!');
-            document.getElementById('nuevoNombre').value = '';
-            document.getElementById('nuevoCargoTexto').value = '';
-            document.getElementById('nuevoCargoSelect').value = 'MG';
-            verificarCargoOtro('MG');
-            renderizarListaGestion();
-            
-            // Si ya hay un día cargado, actualizar la lista visible
-            const fecha = document.getElementById('fechaParo').value;
-            if (fecha && registrosBase[fecha]) {
-                inicializarDia();
-            }
-        })
-        .catch(err => alert("Error al guardar en Firebase: " + err.message));
-    }
-
+        item.innerHTML = `
+            <div class="info-docente" style="margin-bottom: 8px;">
+                <strong>${docente.nombre}</strong> (${docente.cargo || "Sin cargo"}) - <em>${docente.turno || "Sin turno"}</em>
+                <br><small style="color: #666;">Días de asistencia: <strong>${diasTexto}</strong></small>
+            </div>
+            <div class="acciones-docente">
+                <button type="button" onclick="mostrarFormularioEditar(${index})" class="btn-editar">Editar Días</button>
+                <button type="button" onclick="eliminarDocenteBase(${index})" class="btn-eliminar">Eliminar</button>
+            </div>
+            <div id="form-edit-${index}" class="form-editar-dias" style="display: none; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
+                <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
+                <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
+                <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
+                <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
+                <div style="margin-top: 8px;">
+                    <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
+                    <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
+                </div>
+            </div>
+        `;
+        contenedor.appendChild(item);
+    });
+}
     function eliminarDocenteBase(id) {
         if (confirm('¿Seguro que querés eliminar a este agente del plantel general?')) {
             baseDocentes = baseDocentes.filter(d => d.id !== id);
@@ -472,50 +467,54 @@
     // Mostrar/Ocultar panel de edición
 function mostrarFormularioEditar(index) {
     const form = document.getElementById(`form-edit-${index}`);
-    form.style.display = form.style.display === "none" ? "block" : "none";
+    if (!form) return;
 
-    // Marcar los checkboxes de los días que actualmente tiene asignados
-    const docente = baseDocentes[index];
-    const checkboxes = document.querySelectorAll(`.chk-edit-${index}`);
-    
-    checkboxes.forEach(chk => {
-        chk.checked = docente.dias ? docente.dias.includes(parseInt(chk.value)) : true;
-    });
+    const estaOculto = form.style.display === "none";
+    form.style.display = estaOculto ? "block" : "none";
+
+    if (estaOculto) {
+        const docente = baseDocentes[index];
+        const checkboxes = document.querySelectorAll(`.chk-edit-${index}`);
+        
+        checkboxes.forEach(chk => {
+            const diaValor = parseInt(chk.value);
+            // Si no tiene días especificados, por defecto se marcan todos (1 a 5)
+            chk.checked = docente.dias && docente.dias.length > 0 ? docente.dias.includes(diaValor) : true;
+        });
+    }
 }
 
 function ocultarFormularioEditar(index) {
-    document.getElementById(`form-edit-${index}`).style.display = "none";
+    const form = document.getElementById(`form-edit-${index}`);
+    if (form) form.style.display = "none";
 }
 
-// Guardar los nuevos días en la base de datos
-async function guardarDiasEditados(index) {
+function guardarDiasEditados(index) {
     const checkboxes = document.querySelectorAll(`.chk-edit-${index}:checked`);
-    const nuevosDias = Array.from(checkboxes).map(chk => parseInt(chk.value));
+    const nuevosDias = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
     if (nuevosDias.length === 0) {
-        alert("Debe seleccionar al menos un día de asistencia.");
-        return;
+        return alert("Seleccioná al menos un día de asistencia.");
     }
 
-    // Actualizar el array local
     baseDocentes[index].dias = nuevosDias;
 
-    // Guardar en Firestore según la escuela correspondiente
-    // Para EP7 usá "configuracion_ep7" y para EP1 usá "configuracion_ep1"
-    const coleccionConfig = "configuracion_ep7"; // O "configuracion_ep1" según el archivo
+    // Ajustar 'configuracion_ep7' o 'configuracion_ep1' según corresponda
+    const coleccionConfig = "configuracion_ep7"; 
 
-    try {
-        await db.collection(coleccionConfig).doc("plantel").set({
-            docentes: baseDocentes
-        });
-        alert("Días de asistencia actualizados correctamente.");
-        renderizarListaGestion();
-    } catch (error) {
-        console.error("Error al actualizar días:", error);
-        alert("Ocurrió un error al guardar los cambios.");
-    }
-}
-    
+    db.collection(coleccionConfig).doc("plantel").set({ docentes: baseDocentes })
+        .then(() => {
+            alert("Días actualizados con éxito.");
+            renderizarListaGestion();
+            
+            // Refrescar lista del día si hay una fecha seleccionada
+            const fecha = document.getElementById('fechaParo').value;
+            if (fecha && typeof inicializarDia === 'function') {
+                inicializarDia();
+            }
+        })
+        .catch(err => alert("Error al guardar cambios: " + err.message));
+}    
     function inicializarDia() {
         const fecha = document.getElementById('fechaParo').value;
         if (!fecha) return alert("Por favor, selecciona una fecha.");
