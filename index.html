@@ -772,6 +772,80 @@ unsubscribeFirestore = db.collection("registros_paros_ep7").doc(fecha).onSnapsho
         return docente.dias.includes(diaSemana);
     });
 }
+    function agregarNuevoDocente() {
+        const inputNombre = document.getElementById('nuevoNombre');
+        const selectCargo = document.getElementById('nuevoCargoSelect');
+        const inputCargoTexto = document.getElementById('nuevoCargoTexto');
+        const inputEscuela = document.getElementById('nuevaEscuela');
+        const selectTurno = document.getElementById('nuevoTurno');
+        
+        // Obtener días seleccionados
+        const checkboxesDias = document.querySelectorAll('.check-dia:checked');
+        const diasSeleccionados = Array.from(checkboxesDias).map(cb => parseInt(cb.value));
+
+        const nombre = inputNombre ? inputNombre.value.trim() : '';
+        let cargo = selectCargo ? selectCargo.value : '';
+        if (cargo === 'OTRO') {
+            cargo = inputCargoTexto ? inputCargoTexto.value.trim() : '';
+        }
+        const escuela = inputEscuela ? inputEscuela.value.trim() : 'EP 7';
+        const turno = selectTurno ? selectTurno.value : 'Mañana';
+
+        if (!nombre) {
+            alert("Por favor, ingresá el nombre y apellido del agente.");
+            return;
+        }
+
+        if (!cargo) {
+            alert("Por favor, especificá el cargo.");
+            return;
+        }
+
+        if (diasSeleccionados.length === 0) {
+            alert("Seleccioná al menos un día de asistencia.");
+            return;
+        }
+
+        // Generar nuevo ID único
+        const nuevoId = baseDocentes.length > 0 ? Math.max(...baseDocentes.map(d => d.id || 0)) + 1 : 1;
+
+        const nuevoAgente = {
+            id: nuevoId,
+            nombre: nombre,
+            escuela: escuela,
+            turno: turno,
+            cargo: cargo,
+            dias: diasSeleccionados
+        };
+
+        // Agregar a la lista local
+        baseDocentes.push(nuevoAgente);
+
+        // Guardar y sincronizar en Firebase
+        db.collection("configuracion_ep7").doc("plantel").set({ docentes: baseDocentes })
+            .then(() => {
+                alert("¡Agente agregado con éxito al plantel general!");
+                
+                // Limpiar campos del formulario
+                inputNombre.value = '';
+                if (inputCargoTexto) inputCargoTexto.value = '';
+                selectCargo.value = 'MG';
+                verificarCargoOtro('MG');
+
+                // Recargar lista visual
+                renderizarListaGestion();
+
+                // Si hay una fecha seleccionada en pantalla, refrescar el día
+                const fecha = document.getElementById('fechaParo').value;
+                if (fecha && typeof inicializarDia === 'function') {
+                    inicializarDia();
+                }
+            })
+            .catch(err => {
+                console.error("Error al guardar en Firebase:", err);
+                alert("Error al guardar en Firebase: " + err.message);
+            });
+    }
 </script>
 
 </body>
