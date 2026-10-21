@@ -415,18 +415,18 @@
                     <br><small style="color: #555;">Días de asistencia: <strong>${diasTexto}</strong></small>
                 </div>
                 <div class="acciones-docente" style="margin-top: 5px;">
-                    <button type="button" onclick="mostrarFormularioEditar(${indexReal})">Editar Días</button>
-                    <button type="button" onclick="eliminarDocenteBase(${indexReal})">Eliminar</button>
+                    <button type="button" onclick="mostrarFormularioEditar(${index})">Editar Días</button>
+                    <button type="button" onclick="eliminarDocenteBase(${index})">Eliminar</button>
                 </div>
-                <div id="form-edit-${indexReal}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
-                    <label><input type="checkbox" value="1" class="chk-edit-${indexReal}"> Lun</label>
-                    <label><input type="checkbox" value="2" class="chk-edit-${indexReal}"> Mar</label>
-                    <label><input type="checkbox" value="3" class="chk-edit-${indexReal}"> Mié</label>
-                    <label><input type="checkbox" value="4" class="chk-edit-${indexReal}"> Jue</label>
-                    <label><input type="checkbox" value="5" class="chk-edit-${indexReal}"> Vie</label>
+                <div id="form-edit-${index}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
+                    <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
+                    <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
+                    <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
+                    <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
                     <div style="margin-top: 8px;">
-                        <button type="button" onclick="guardarDiasEditados(${indexReal})">Guardar</button>
-                        <button type="button" onclick="ocultarFormularioEditar(${indexReal})">Cancelar</button>
+                        <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
+                        <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
                     </div>
                 </div>
             `;
@@ -436,9 +436,10 @@
         }
     });
 }
-    function eliminarDocenteBase(id) {
+    function eliminarDocenteBase(index) {
         if (confirm('¿Seguro que querés eliminar a este agente del plantel general?')) {
-            baseDocentes = baseDocentes.filter(d => d.id !== id);
+            // Eliminamos directamente por la posición (index) del arreglo visualizado
+            baseDocentes.splice(index, 1);
             
             db.collection("configuracion_ep7").doc("plantel").set({ docentes: baseDocentes })
             .then(() => {
@@ -451,7 +452,6 @@
             .catch(err => alert("Error al actualizar en Firebase: " + err.message));
         }
     }
-
     // Mostrar/Ocultar panel de edición
 function mostrarFormularioEditar(index) {
     const form = document.getElementById(`form-edit-${index}`);
