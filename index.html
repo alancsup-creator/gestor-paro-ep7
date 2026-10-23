@@ -373,15 +373,14 @@
 
     contenedor.innerHTML = "";
 
-    // Leer el término del buscador (si existe) y pasarlo a minúsculas
     const inputBuscador = document.getElementById("buscadorGestion");
     const filtro = inputBuscador ? inputBuscador.value.toLowerCase().trim() : "";
 
     const nombresDias = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie" };
 
-    // Filtrar los docentes según el texto ingresado
+    // Filtrar los docentes según el buscador
     const docentesFiltrados = baseDocentes.filter(docente => {
-        if (!filtro) return true; // Si está vacío, muestra todos
+        if (!filtro) return true;
         const nombreDocente = (docente.nombre || "").toLowerCase();
         return nombreDocente.includes(filtro);
     });
@@ -391,10 +390,12 @@
         return;
     }
 
-    docentesFiltrados.forEach((docente) => {
+    // CORRECCIÓN: Agregamos (docente, index) en el forEach
+    docentesFiltrados.forEach((docente, index) => {
         try {
-            // Buscamos el índice real en baseDocentes para que al editar o eliminar no afecte al docente equivocado
+            // Obtenemos el índice real en el arreglo original (baseDocentes)
             const indexReal = baseDocentes.findIndex(d => d.id ? d.id === docente.id : d.nombre === docente.nombre);
+            const pos = indexReal !== -1 ? indexReal : index;
 
             const nombre = docente.nombre || "Sin Nombre";
             const cargo = docente.cargo || "Sin Cargo";
@@ -415,18 +416,18 @@
                     <br><small style="color: #555;">Días de asistencia: <strong>${diasTexto}</strong></small>
                 </div>
                 <div class="acciones-docente" style="margin-top: 5px;">
-                    <button type="button" onclick="mostrarFormularioEditar(${index})">Editar Días</button>
-                    <button type="button" onclick="eliminarDocenteBase(${index})">Eliminar</button>
+                    <button type="button" onclick="mostrarFormularioEditar(${pos})">Editar Días</button>
+                    <button type="button" onclick="eliminarDocenteBase(${pos})">Eliminar</button>
                 </div>
-                <div id="form-edit-${index}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
-                    <label><input type="checkbox" value="1" class="chk-edit-${index}"> Lun</label>
-                    <label><input type="checkbox" value="2" class="chk-edit-${index}"> Mar</label>
-                    <label><input type="checkbox" value="3" class="chk-edit-${index}"> Mié</label>
-                    <label><input type="checkbox" value="4" class="chk-edit-${index}"> Jue</label>
-                    <label><input type="checkbox" value="5" class="chk-edit-${index}"> Vie</label>
+                <div id="form-edit-${pos}" style="display: none; margin-top: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" value="1" class="chk-edit-${pos}"> Lun</label>
+                    <label><input type="checkbox" value="2" class="chk-edit-${pos}"> Mar</label>
+                    <label><input type="checkbox" value="3" class="chk-edit-${pos}"> Mié</label>
+                    <label><input type="checkbox" value="4" class="chk-edit-${pos}"> Jue</label>
+                    <label><input type="checkbox" value="5" class="chk-edit-${pos}"> Vie</label>
                     <div style="margin-top: 8px;">
-                        <button type="button" onclick="guardarDiasEditados(${index})">Guardar</button>
-                        <button type="button" onclick="ocultarFormularioEditar(${index})">Cancelar</button>
+                        <button type="button" onclick="guardarDiasEditados(${pos})">Guardar</button>
+                        <button type="button" onclick="ocultarFormularioEditar(${pos})">Cancelar</button>
                     </div>
                 </div>
             `;
